@@ -40,7 +40,14 @@ function sair() {
   $('secLogin').hidden = false;
 }
 
+// Qualquer erro de script aparece na tela de login, para não falhar em silêncio.
+window.addEventListener('error', (ev) => {
+  const el = document.getElementById('loginStatus');
+  if (el) show(el, 'Erro no app: ' + (ev.message || 'desconhecido'), 'err');
+});
+
 $('btnLogin').onclick = async () => {
+  show($('loginStatus'), 'Entrando...', '');
   try {
     const r = await fetch('/api/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
