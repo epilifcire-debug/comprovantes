@@ -1,7 +1,4 @@
-FROM node:20-bookworm-slim
-RUN apt-get update \
- && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-por \
- && rm -rf /var/lib/apt/lists/*
+FROM node:20-alpine
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev

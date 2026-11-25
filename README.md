@@ -37,7 +37,7 @@ Meu Drive/
 
 ## Servidor (backend)
 
-O OCR usa o Tesseract, instalado no Dockerfile. Não precisa de chave nem de faturamento.
+O OCR usa tesseract.js (pacote npm, em português). Não precisa de chave, de faturamento nem de instalar nada no sistema.
 
 Variáveis de ambiente (configure no Shard Cloud, nunca no repositório):
 

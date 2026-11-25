@@ -5,10 +5,7 @@
 
 const express = require('express');
 const crypto = require('crypto');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const { execFile } = require('child_process');
+const { createWorker } = require('tesseract.js');
 const { createClient } = require('@supabase/supabase-js');
 
 const env = (k, def) => {
@@ -134,24 +131,20 @@ app.patch('/api/admin/usuarios/:id', autenticado, somenteAdmin, async (req, res)
   res.json({ ok: true });
 });
 
-// OCR local com Tesseract (idioma português). Recebe a folha tratada (JPEG em base64).
+// OCR com tesseract.js (roda só com Node, sem instalar nada no sistema). Idioma: português.
+let ocrWorker = null;
+async function ocr(buffer) {
+  if (!ocrWorker) ocrWorker = await createWorker('por');
+  const { data } = await ocrWorker.recognize(buffer);
+  return data.text;
+}
+
 app.post('/api/scan', autenticado, async (req, res) => {
   try {
     const content = String(req.body.imagem_b64 || '');
     if (!content) return res.status(400).json({ erro: 'Envie a imagem.' });
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocr-'));
-    const arq = path.join(dir, 'folha.jpg');
-    try {
-      fs.writeFileSync(arq, Buffer.from(content, 'base64'));
-      const texto = await new Promise((ok, falha) =>
-        execFile('tesseract', [arq, 'stdout', '-l', 'por', '--psm', '3'],
-          { maxBuffer: 20 * 1024 * 1024 },
-          (err, out, errOut) => (err ? falha(new Error(errOut || err.message)) : ok(out)))
-      );
-      res.json({ texto });
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
+    const texto = await ocr(Buffer.from(content, 'base64'));
+    res.json({ texto });
   } catch (e) {
     console.error('Erro no OCR:', e.message);
     res.status(500).json({ erro: 'OCR: ' + e.message });
