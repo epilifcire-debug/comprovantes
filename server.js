@@ -74,7 +74,11 @@ function somenteAdmin(req, res, next) {
 
 // ---------- Administrador master (criado no primeiro início) ----------
 async function garanteAdmin() {
-  const { data } = await db.from('usuarios').select('id').eq('papel', 'admin_master').limit(1);
+  const { data, error: erroConsulta } = await db.from('usuarios').select('id').eq('papel', 'admin_master').limit(1);
+  if (erroConsulta) {
+    console.error('Supabase: não consegui ler usuarios:', erroConsulta.message);
+    return;
+  }
   if (data && data.length) return;
   const username = env('ADMIN_USERNAME', '');
   const senha = env('ADMIN_PASSWORD', '');
@@ -96,7 +100,11 @@ app.post('/api/login', async (req, res) => {
   if (!login || !senha) return res.status(400).json({ erro: 'Informe usuário ou e-mail e senha.' });
 
   const campo = login.includes('@') ? 'email' : 'username';
-  const { data } = await db.from('usuarios').select('*').eq(campo, login).maybeSingle();
+  const { data, error: erroBusca } = await db.from('usuarios').select('*').eq(campo, login).maybeSingle();
+  if (erroBusca) {
+    console.error('Login: erro ao buscar usuário:', erroBusca.message);
+    return res.status(500).json({ erro: 'Erro ao consultar o banco. Veja os logs do servidor.' });
+  }
   if (!data || !data.ativo || !confereSenha(senha, data.senha_hash)) {
     return res.status(401).json({ erro: 'Usuário ou senha incorretos.' });
   }
