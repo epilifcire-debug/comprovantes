@@ -1,5 +1,5 @@
-const CACHE = 'folha-drive-v5';
-const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg'];
+const CACHE = 'folha-drive-v6';
+const SHELL = ['./', 'index.html', 'app.js', 'scanner.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));

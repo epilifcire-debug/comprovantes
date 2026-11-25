@@ -68,7 +68,15 @@
         <option value="180">180°</option>
       </select>
       <small>Use o giro se o texto aparecer de lado ou de cabeça para baixo.</small>
-      <button id="btnOcr" disabled>Escanear recibos</button>
+      <div id="ajusteBox" hidden>
+        <label>Cantos da página (arraste se a detecção errar)</label>
+        <canvas id="editor" style="width:100%;touch-action:none;border-radius:10px;background:#000;display:block"></canvas>
+        <button id="btnDetect" class="secondary" disabled>Detectar página de novo</button>
+        <button id="btnGerar" disabled>Gerar página escaneada</button>
+        <label>Prévia da página escaneada</label>
+        <img id="preview" alt="" style="width:100%;border-radius:10px;background:#fff;display:none">
+      </div>
+      <button id="btnOcr" class="secondary" disabled>Ler nomes da folha (OCR)</button>
       <div id="ocrStatus" class="status"></div>
     </section>
 
@@ -97,6 +105,7 @@
     </section>
   </div>
 </main>
+<script src="scanner.js" defer></script>
 <script src="app.js" defer></script>
 <script>
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

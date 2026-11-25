@@ -1,8 +1,9 @@
 const $ = (id) => document.getElementById(id);
-const MAX_SIDE = 2200; // px: suficiente para ler texto pequeno sem pesar o envio
 
 let photoFile = null;
-let scanned = null; // { b64, w, h } da folha já tratada
+let srcCanvas = null;   // foto já girada (entrada do scanner)
+let cantos = null;      // 4 cantos da página, na escala de srcCanvas
+let scanned = null;     // { b64, w, h } da página escaneada
 
 function show(el, text, cls) {
   el.textContent = text;
@@ -66,74 +67,147 @@ $('btnSair').onclick = sair;
   } catch { sair(); }
 })();
 
-// ---------- Foto → "escaneada" (giro + tons de cinza + contraste) ----------
-$('photo').onchange = (e) => {
-  photoFile = e.target.files[0] || null;
-  scanned = null;
-  $('btnOcr').disabled = !photoFile;
-  show($('ocrStatus'), photoFile ? 'Foto selecionada. Clique em "Escanear recibos".' : '', '');
-};
+// ---------- Scanner: detectar página, ajustar cantos, gerar ----------
+const editor = $('editor');
+const ctxEd = editor.getContext('2d');
+let escala = 1;       // escala de exibição (tela / srcCanvas)
+let arrastando = -1;  // índice do canto sendo arrastado
 
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = reject;
-    img.src = url;
+function desenhaEditor() {
+  if (!srcCanvas || !cantos) return;
+  const largura = Math.min(560, editor.parentElement.clientWidth || 560);
+  escala = largura / srcCanvas.width;
+  editor.width = largura;
+  editor.height = Math.round(srcCanvas.height * escala);
+  ctxEd.drawImage(srcCanvas, 0, 0, editor.width, editor.height);
+  ctxEd.lineWidth = 3;
+  ctxEd.strokeStyle = '#38bdf8';
+  ctxEd.beginPath();
+  cantos.forEach((p, i) => {
+    const x = p.x * escala, y = p.y * escala;
+    if (i === 0) ctxEd.moveTo(x, y); else ctxEd.lineTo(x, y);
+  });
+  ctxEd.closePath();
+  ctxEd.stroke();
+  cantos.forEach((p) => {
+    ctxEd.beginPath();
+    ctxEd.arc(p.x * escala, p.y * escala, 12, 0, Math.PI * 2);
+    ctxEd.fillStyle = '#38bdf8';
+    ctxEd.fill();
+    ctxEd.lineWidth = 2;
+    ctxEd.strokeStyle = '#0b1222';
+    ctxEd.stroke();
   });
 }
 
-async function preprocess(file, angle) {
-  const img = await loadImage(file);
-  const swap = angle === 90 || angle === 270;
-  const w = swap ? img.height : img.width;
-  const h = swap ? img.width : img.height;
-  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(w * scale);
-  canvas.height = Math.round(h * scale);
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate((angle * Math.PI) / 180);
-  ctx.drawImage(img, -(img.width * scale) / 2, -(img.height * scale) / 2, img.width * scale, img.height * scale);
-
-  // Cinza + contraste: estica os níveis entre os percentis 2% e 98%
-  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const px = data.data;
-  const hist = new Array(256).fill(0);
-  for (let i = 0; i < px.length; i += 4) {
-    const g = Math.round(0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]);
-    px[i] = px[i + 1] = px[i + 2] = g;
-    hist[g]++;
-  }
-  const total = canvas.width * canvas.height;
-  let lo = 0, hi = 255, acc = 0;
-  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= total * 0.02) { lo = v; break; } }
-  acc = 0;
-  for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.02) { hi = v; break; } }
-  const range = Math.max(1, hi - lo);
-  for (let i = 0; i < px.length; i += 4) {
-    const v = Math.min(255, Math.max(0, ((px[i] - lo) * 255) / range));
-    px[i] = px[i + 1] = px[i + 2] = v;
-  }
-  ctx.putImageData(data, 0, 0);
-
-  return { b64: canvas.toDataURL('image/jpeg', 0.9).split(',')[1], w: canvas.width, h: canvas.height };
+function posicaoNoEditor(e) {
+  const r = editor.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (editor.width / r.width) / escala,
+    y: (e.clientY - r.top) * (editor.height / r.height) / escala,
+  };
 }
 
-// ---------- OCR (pelo servidor) ----------
-$('btnOcr').onclick = async () => {
+editor.addEventListener('pointerdown', (e) => {
+  if (!cantos) return;
+  const p = posicaoNoEditor(e);
+  let melhor = -1, dist = Infinity;
+  cantos.forEach((c, i) => {
+    const d = Math.hypot(c.x - p.x, c.y - p.y);
+    if (d < dist) { dist = d; melhor = i; }
+  });
+  if (dist * escala <= 40) {
+    arrastando = melhor;
+    editor.setPointerCapture(e.pointerId);
+  }
+});
+
+editor.addEventListener('pointermove', (e) => {
+  if (arrastando < 0) return;
+  const p = posicaoNoEditor(e);
+  cantos[arrastando] = {
+    x: Math.max(0, Math.min(srcCanvas.width, p.x)),
+    y: Math.max(0, Math.min(srcCanvas.height, p.y)),
+  };
+  desenhaEditor();
+});
+
+editor.addEventListener('pointerup', () => { arrastando = -1; });
+editor.addEventListener('pointercancel', () => { arrastando = -1; });
+
+function habilitaBotoes(on) {
+  $('btnDetect').disabled = !on;
+  $('btnGerar').disabled = !on;
+  $('btnOcr').disabled = !on;
+}
+
+async function preparaFoto() {
   if (!photoFile) return;
-  $('btnOcr').disabled = true;
-  show($('ocrStatus'), 'Preparando a imagem...', '');
+  $('ajusteBox').hidden = false;
+  habilitaBotoes(false);
+  show($('ocrStatus'), 'Preparando o scanner (a primeira vez pode demorar)...', '');
   try {
-    scanned = await preprocess(photoFile, Number($('rotate').value));
-    show($('ocrStatus'), 'Lendo os recibos...', '');
-    const resp = await api('/api/scan', { method: 'POST', body: { imagem_b64: scanned.b64 } });
+    srcCanvas = await imageToCanvas(photoFile, Number($('rotate').value));
+    const achado = await detectaPagina(srcCanvas);
+    cantos = achado || cantosPadrao(srcCanvas.width, srcCanvas.height);
+    scanned = null;
+    $('preview').style.display = 'none';
+    desenhaEditor();
+    show($('ocrStatus'), achado
+      ? 'Página detectada. Confira os cantos e clique em "Gerar página escaneada".'
+      : 'Não achei a página sozinho. Arraste os cantos e clique em "Gerar página escaneada".', achado ? 'ok' : 'err');
+  } catch (err) {
+    show($('ocrStatus'), 'Erro no scanner: ' + err.message, 'err');
+  } finally {
+    habilitaBotoes(true);
+  }
+}
+
+async function geraPagina() {
+  if (!srcCanvas || !cantos) return null;
+  const r = await geraPaginaEscaneada(srcCanvas, cantos);
+  scanned = { b64: r.b64, w: r.w, h: r.h };
+  $('preview').src = 'data:image/jpeg;base64,' + r.b64;
+  $('preview').style.display = 'block';
+  return scanned;
+}
+
+// Garante a página escaneada antes de OCR ou envio.
+async function garantePagina() {
+  if (!scanned && photoFile) await geraPagina();
+  return scanned;
+}
+
+$('photo').onchange = (e) => {
+  photoFile = e.target.files[0] || null;
+  scanned = null;
+  srcCanvas = null;
+  cantos = null;
+  habilitaBotoes(false);
+  $('ajusteBox').hidden = !photoFile;
+  if (photoFile) preparaFoto();
+  else show($('ocrStatus'), '', '');
+};
+
+$('rotate').onchange = () => { if (photoFile) preparaFoto(); };
+$('btnDetect').onclick = () => preparaFoto();
+$('btnGerar').onclick = async () => {
+  try {
+    show($('ocrStatus'), 'Gerando página escaneada...', '');
+    await geraPagina();
+    show($('ocrStatus'), 'Página pronta. Confira a prévia.', 'ok');
+  } catch (err) {
+    show($('ocrStatus'), 'Erro ao gerar: ' + err.message, 'err');
+  }
+};
+
+// ---------- OCR (opcional, pelo servidor) ----------
+$('btnOcr').onclick = async () => {
+  try {
+    show($('ocrStatus'), 'Lendo os nomes...', '');
+    const pag = await garantePagina();
+    if (!pag) throw new Error('gere a página escaneada primeiro');
+    const resp = await api('/api/scan', { method: 'POST', body: { imagem_b64: pag.b64 } });
     if (typeof resp.texto !== 'string') throw new Error('o servidor não devolveu o texto da folha');
     const rows = parseReceipts(resp.texto, $('eventName').value.trim());
     if (!rows.length) {
@@ -214,26 +288,23 @@ $('btnCreate').onclick = async () => {
   const rows = parseRows();
   const evento = $('eventName').value.trim();
   if (rows.some((r) => !r.setor && !evento)) {
-    return show($('driveStatus'), 'Há pessoas sem setor. Preencha o setor ou o campo Evento.', 'err');
+    return show($('driveStatus'), 'Há pessoas sem setor. Preencha o evento no campo acima.', 'err');
   }
   $('btnCreate').disabled = true;
-  show($('driveStatus'), 'Criando pastas e enviando...', '');
+  show($('driveStatus'), 'Preparando a página e enviando...', '');
   try {
-    // Sem leitura de OCR: trata a foto aqui, para o PDF sair mesmo assim
-    if (photoFile && !scanned) {
-      scanned = await preprocess(photoFile, Number($('rotate').value));
-    }
+    const pag = await garantePagina();
     const r = await api('/api/pastas', {
       method: 'POST',
       body: {
         rows,
         evento_padrao: evento,
-        imagem_b64: scanned?.b64 || null,
-        largura: scanned?.w,
-        altura: scanned?.h,
+        imagem_b64: pag?.b64 || null,
+        largura: pag?.w,
+        altura: pag?.h,
       },
     });
-    const extra = r.pdf ? ' PDF enviado em cada pasta.' : ' Sem foto escaneada: nenhum PDF foi enviado.';
+    const extra = r.pdf ? ' PDF enviado em cada pasta.' : ' Sem foto: nenhum PDF foi enviado.';
     show($('driveStatus'), `✔ ${r.pastas} pasta(s) criada(s) no Drive.${extra}`, 'ok');
   } catch (err) {
     show($('driveStatus'), 'Erro: ' + err.message, 'err');

@@ -25,6 +25,7 @@ Meu Drive/
 - A pasta de cada pessoa é `NOME - SETOR`, por exemplo `FLAVIO LUIS ROSA BEZERRA - CAMAROTE AJU SEXTA (13/11)`.
 - A leitura lê os campos `NOME`, `SETOR` e `EVENTO` de cada recibo. Pessoas repetidas no mesmo setor (vários ingressos) viram uma pasta só. O `EVENTO` só é usado se o setor não for lido.
 - Ao criar as pastas, a folha escaneada (tons de cinza, com contraste) é salva como `Folha escaneada.pdf` dentro da pasta de cada pessoa que aparece na lista. A folha inteira vai para cada uma, sem recorte. Se a pasta já tiver esse arquivo, ele não é enviado de novo.
+- O scanner acha a página inteira (a folha), não o conteúdo dentro dela. Corrige a perspectiva e aplica filtro preto e branco. Roda no navegador com OpenCV.js (`public/vendor/opencv.js`), sem serviço pago. Se a detecção errar, arraste os cantos.
 - Antes do OCR, a foto é girada, convertida em tons de cinza e recebe contraste, para ficar parecida com um scan. Não há correção de perspectiva. Por isso, fotografe a folha reta e bem iluminada.
 - Sempre confira a lista antes de criar as pastas.
 
