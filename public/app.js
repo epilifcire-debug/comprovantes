@@ -137,7 +137,8 @@ $('btnOcr').onclick = async () => {
     if (typeof resp.texto !== 'string') throw new Error('o servidor não devolveu o texto da folha');
     const rows = parseReceipts(resp.texto, $('eventName').value.trim());
     if (!rows.length) {
-      show($('ocrStatus'), 'Nenhum recibo reconhecido. Tente girar a foto ou fotografar mais reto.', 'err');
+      const trecho = resp.texto.replace(/\s+/g, ' ').trim().slice(0, 400) || '(nenhum texto)';
+      show($('ocrStatus'), 'Nenhum recibo reconhecido. Texto lido: ' + trecho, 'err');
     } else {
       $('names').value = rows.map((r) => `${r.name} | ${r.setor}`).join('\n');
       show($('ocrStatus'), `${rows.length} pessoa(s) encontrada(s). Confira antes de criar.`, 'ok');
