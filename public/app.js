@@ -219,6 +219,10 @@ $('btnCreate').onclick = async () => {
   $('btnCreate').disabled = true;
   show($('driveStatus'), 'Criando pastas e enviando...', '');
   try {
+    // Sem leitura de OCR: trata a foto aqui, para o PDF sair mesmo assim
+    if (photoFile && !scanned) {
+      scanned = await preprocess(photoFile, Number($('rotate').value));
+    }
     const r = await api('/api/pastas', {
       method: 'POST',
       body: {
