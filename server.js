@@ -133,18 +133,32 @@ app.patch('/api/admin/usuarios/:id', autenticado, somenteAdmin, async (req, res)
 
 // OCR: recebe a folha já tratada (JPEG em base64) e devolve o texto.
 app.post('/api/scan', autenticado, async (req, res) => {
-  const content = String(req.body.imagem_b64 || '');
-  if (!content) return res.status(400).json({ erro: 'Envie a imagem.' });
-  const r = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      requests: [{ image: { content }, features: [{ type: 'DOCUMENT_TEXT_DETECTION' }], imageContext: { languageHints: ['pt'] } }],
-    }),
-  });
-  const data = await r.json();
-  if (!r.ok) return res.status(502).json({ erro: data.error?.message || 'Falha na Cloud Vision.' });
-  res.json({ texto: data.responses?.[0]?.fullTextAnnotation?.text || '' });
+  try {
+    const content = String(req.body.imagem_b64 || '');
+    if (!content) return res.status(400).json({ erro: 'Envie a imagem.' });
+    const r = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ image: { content }, features: [{ type: 'DOCUMENT_TEXT_DETECTION' }], imageContext: { languageHints: ['pt'] } }],
+      }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error('Cloud Vision:', r.status, data.error?.message);
+      return res.status(502).json({ erro: 'Cloud Vision: ' + (data.error?.message || 'status ' + r.status) });
+    }
+    res.json({ texto: data.responses?.[0]?.fullTextAnnotation?.text || '' });
+  } catch (e) {
+    console.error('Erro no OCR:', e);
+    res.status(500).json({ erro: 'Erro no servidor: ' + e.message });
+  }
+});
+
+// Captura erros não tratados das rotas async (Express 4), para devolver JSON em vez de travar.
+app.use((err, _req, res, _next) => {
+  console.error('Erro não tratado:', err);
+  res.status(500).json({ erro: 'Erro no servidor: ' + (err.message || 'desconhecido') });
 });
 
 // Cria as pastas "NOME - SETOR" e envia o PDF da folha em cada uma.
