@@ -275,4 +275,4 @@ function montaPdf(jpeg, w, h) {
 const PORT = Number(process.env.PORT || 3000);
 garanteAdmin()
   .catch((e) => console.error('Erro ao verificar admin:', e.message))
-  .finally(() => app.listen(PORT, () => console.log(`Servidor na porta ${PORT}`)));
+  .finally(() => app.listen(PORT, '0.0.0.0', () => console.log(`Servidor na porta ${PORT} (0.0.0.0)`)));
