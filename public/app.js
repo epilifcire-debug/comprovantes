@@ -72,6 +72,7 @@ const editor = $('editor');
 const ctxEd = editor.getContext('2d');
 let escala = 1;       // escala de exibição (tela / srcCanvas)
 let arrastando = -1;  // índice do canto sendo arrastado
+let redesenhaAgendado = false;
 
 function desenhaEditor() {
   if (!srcCanvas || !cantos) return;
@@ -129,7 +130,10 @@ editor.addEventListener('pointermove', (e) => {
     x: Math.max(0, Math.min(srcCanvas.width, p.x)),
     y: Math.max(0, Math.min(srcCanvas.height, p.y)),
   };
-  desenhaEditor();
+  if (!redesenhaAgendado) {
+    redesenhaAgendado = true;
+    requestAnimationFrame(() => { redesenhaAgendado = false; desenhaEditor(); });
+  }
 });
 
 editor.addEventListener('pointerup', () => { arrastando = -1; });
@@ -148,10 +152,15 @@ async function preparaFoto() {
   show($('ocrStatus'), 'Preparando o scanner (a primeira vez pode demorar)...', '');
   try {
     srcCanvas = await imageToCanvas(photoFile, Number($('rotate').value));
-    const achado = await detectaPagina(srcCanvas);
-    cantos = achado || cantosPadrao(srcCanvas.width, srcCanvas.height);
+    // Mostra a foto logo, com cantos padrão, antes do trabalho pesado (evita a tela travar).
+    cantos = cantosPadrao(srcCanvas.width, srcCanvas.height);
     scanned = null;
     $('preview').style.display = 'none';
+    desenhaEditor();
+    show($('ocrStatus'), 'Procurando a página...', '');
+    await new Promise((r) => setTimeout(r, 60)); // deixa o navegador desenhar antes
+    const achado = await detectaPagina(srcCanvas);
+    if (achado) cantos = achado;
     desenhaEditor();
     show($('ocrStatus'), achado
       ? 'Página detectada. Confira os cantos e clique em "Gerar página escaneada".'

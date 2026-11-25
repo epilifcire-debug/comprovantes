@@ -2,7 +2,7 @@
 // corrige a perspectiva e aplica filtro de scanner. Tudo roda no navegador (OpenCV.js).
 
 const MAX_SIDE = 2200;     // px da saída: lê texto pequeno sem pesar o envio
-const DETECT_SIDE = 800;   // px usados só para achar as bordas (mais rápido)
+const DETECT_SIDE = 640;   // px usados só para achar as bordas (mais rápido)
 
 let cvPromise = null;
 
