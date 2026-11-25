@@ -1,4 +1,4 @@
-const CACHE = 'folha-drive-v2';
+const CACHE = 'folha-drive-v3';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -14,9 +14,7 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Nunca cachear chamadas de API/OAuth
-  if (url.origin !== self.location.origin) return;
-  e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request))
-  );
+  // Nunca usar cache para a API (login, OCR, Drive)
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
 });
