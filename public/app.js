@@ -164,14 +164,7 @@ async function preparaFoto() {
     scanned = null;
     $('preview').style.display = 'none';
     desenhaEditor();
-    show($('ocrStatus'), 'Procurando a página...', '');
-    await new Promise((r) => setTimeout(r, 60)); // deixa o navegador desenhar antes
-    const achado = await detectaPagina(srcCanvas);
-    if (achado) cantos = achado;
-    desenhaEditor();
-    show($('ocrStatus'), achado
-      ? 'Página detectada. Confira os cantos e clique em "Gerar página escaneada".'
-      : 'Não achei a página sozinho. Arraste os cantos e clique em "Gerar página escaneada".', achado ? 'ok' : 'err');
+    show($('ocrStatus'), 'Foto carregada. Arraste os cantos ou clique em "Detectar página".', 'ok');
   } catch (err) {
     show($('ocrStatus'), 'Erro no scanner: ' + err.message, 'err');
   } finally {
@@ -206,7 +199,27 @@ $('photo').onchange = (e) => {
 };
 
 $('rotate').onchange = () => { if (photoFile) preparaFoto(); };
-$('btnDetect').onclick = () => preparaFoto();
+// Detecção automática só quando o usuário pede (evita travar a tela ao abrir a foto).
+$('btnDetect').onclick = async () => {
+  if (!srcCanvas) return;
+  habilitaBotoes(false);
+  show($('ocrStatus'), 'Procurando a página (pode levar alguns segundos)...', '');
+  try {
+    await new Promise((r) => setTimeout(r, 60));
+    const achado = await detectaPagina(srcCanvas);
+    cantos = achado || cantosPadrao(srcCanvas.width, srcCanvas.height);
+    scanned = null;
+    $('preview').style.display = 'none';
+    desenhaEditor();
+    show($('ocrStatus'), achado
+      ? 'Página detectada. Confira os cantos e clique em "Gerar página escaneada".'
+      : 'Não achei a página sozinho. Arraste os cantos e clique em "Gerar página escaneada".', achado ? 'ok' : 'err');
+  } catch (err) {
+    show($('ocrStatus'), 'Erro no scanner: ' + err.message, 'err');
+  } finally {
+    habilitaBotoes(true);
+  }
+};
 $('btnGerar').onclick = async () => {
   try {
     show($('ocrStatus'), 'Gerando página escaneada...', '');
