@@ -136,7 +136,7 @@ let ocrWorker = null;
 async function ocr(buffer) {
   if (!ocrWorker) ocrWorker = await createWorker('por');
   const { data } = await ocrWorker.recognize(buffer);
-  return data.text;
+  return data?.text;
 }
 
 app.post('/api/scan', autenticado, async (req, res) => {
@@ -144,6 +144,7 @@ app.post('/api/scan', autenticado, async (req, res) => {
     const content = String(req.body.imagem_b64 || '');
     if (!content) return res.status(400).json({ erro: 'Envie a imagem.' });
     const texto = await ocr(Buffer.from(content, 'base64'));
+    if (typeof texto !== 'string') throw new Error('o OCR não devolveu texto');
     res.json({ texto });
   } catch (e) {
     console.error('Erro no OCR:', e.message);

@@ -133,8 +133,9 @@ $('btnOcr').onclick = async () => {
   try {
     scanned = await preprocess(photoFile, Number($('rotate').value));
     show($('ocrStatus'), 'Lendo os recibos...', '');
-    const { texto } = await api('/api/scan', { method: 'POST', body: { imagem_b64: scanned.b64 } });
-    const rows = parseReceipts(texto, $('eventName').value.trim());
+    const resp = await api('/api/scan', { method: 'POST', body: { imagem_b64: scanned.b64 } });
+    if (typeof resp.texto !== 'string') throw new Error('o servidor não devolveu o texto da folha');
+    const rows = parseReceipts(resp.texto, $('eventName').value.trim());
     if (!rows.length) {
       show($('ocrStatus'), 'Nenhum recibo reconhecido. Tente girar a foto ou fotografar mais reto.', 'err');
     } else {
