@@ -1,0 +1,11 @@
+# Dados pessoais: nunca versionar comprovantes, folhas ou PDFs gerados
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.heic
+uploads/
+scans/
+.env
+.env.*
+node_modules/
