@@ -103,6 +103,8 @@ app.post('/api/login', async (req, res) => {
   res.json({ token: criaToken(data), usuario: { username: data.username, papel: data.papel } });
 });
 
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
 app.get('/api/me', autenticado, (req, res) => res.json({ uid: req.user.uid, papel: req.user.papel }));
 
 app.get('/api/admin/usuarios', autenticado, somenteAdmin, async (_req, res) => {
