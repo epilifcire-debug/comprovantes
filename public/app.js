@@ -81,13 +81,26 @@ let escala = 1;       // escala de exibição (tela / srcCanvas)
 let arrastando = -1;  // índice do canto sendo arrastado
 let redesenhaAgendado = false;
 
+let vista = null;       // cópia reduzida de srcCanvas, para desenhar rápido ao arrastar
+let vistaFonte = null;
+
 function desenhaEditor() {
   if (!srcCanvas || !cantos) return;
   const largura = Math.min(560, editor.parentElement.clientWidth || 560);
   escala = largura / srcCanvas.width;
-  editor.width = largura;
-  editor.height = Math.round(srcCanvas.height * escala);
-  ctxEd.drawImage(srcCanvas, 0, 0, editor.width, editor.height);
+  const altura = Math.round(srcCanvas.height * escala);
+  if (editor.width !== largura || editor.height !== altura) {
+    editor.width = largura;
+    editor.height = altura;
+  }
+  if (!vista || vistaFonte !== srcCanvas || vista.width !== largura) {
+    vista = document.createElement('canvas');
+    vista.width = largura;
+    vista.height = altura;
+    vista.getContext('2d').drawImage(srcCanvas, 0, 0, largura, altura);
+    vistaFonte = srcCanvas;
+  }
+  ctxEd.drawImage(vista, 0, 0);
   ctxEd.lineWidth = 3;
   ctxEd.strokeStyle = '#38bdf8';
   ctxEd.beginPath();
