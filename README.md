@@ -34,3 +34,23 @@ Meu Drive/
 2. Não crie o administrador por SQL com senha em texto. O primeiro admin (`admin_master`) será criado pelo script do servidor, que grava o hash da senha.
 3. Chaves: use só a **service_role** no servidor, como variável de ambiente no Shard Cloud. Nunca no navegador nem neste repositório.
 4. Quando o projeto não for mais necessário, apague-o no Supabase. Os dados de usuários vão junto.
+
+## Servidor (backend)
+
+Variáveis de ambiente (configure no Shard Cloud, nunca no repositório):
+
+| Variável | Para que serve |
+|---|---|
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_SERVICE_KEY` | Chave `service_role` do Supabase |
+| `SESSION_SECRET` | Texto longo e aleatório, para assinar os logins |
+| `VISION_API_KEY` | Chave da Cloud Vision |
+| `GOOGLE_CLIENT_ID` | Client ID do OAuth |
+| `GOOGLE_CLIENT_SECRET` | Client Secret do OAuth |
+| `GOOGLE_REFRESH_TOKEN` | Gerado uma vez pelo script `npm run token` |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Só no primeiro início, para criar o admin master. Remova depois. |
+
+Passos:
+1. `npm run token` com `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` definidos. Autorize a conta Gmail e guarde o `GOOGLE_REFRESH_TOKEN`.
+2. Suba o app no Shard Cloud com o Dockerfile, com as variáveis acima.
+3. No primeiro início, o admin é criado. Depois, remova `ADMIN_PASSWORD` do ambiente.
