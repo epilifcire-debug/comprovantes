@@ -131,10 +131,10 @@ app.patch('/api/admin/usuarios/:id', autenticado, somenteAdmin, async (req, res)
   res.json({ ok: true });
 });
 
-// OCR com tesseract.js (roda só com Node, sem instalar nada no sistema). Idioma: português.
+// OCR com tesseract.js (roda só com Node, sem instalar nada no sistema). Idioma: OCR_LANG (padrão: por).
 let ocrWorker = null;
 async function ocr(buffer) {
-  if (!ocrWorker) ocrWorker = await createWorker('por');
+  if (!ocrWorker) ocrWorker = await createWorker(process.env.OCR_LANG || 'por');
   const { data } = await ocrWorker.recognize(buffer);
   return data?.text;
 }
