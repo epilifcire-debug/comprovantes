@@ -5,6 +5,10 @@
 
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFile } = require('child_process');
 const { createClient } = require('@supabase/supabase-js');
 
 const env = (k, def) => {
@@ -16,7 +20,6 @@ const env = (k, def) => {
 const SUPABASE_URL = env('SUPABASE_URL');
 const SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY');
 const SESSION_SECRET = env('SESSION_SECRET');
-const VISION_API_KEY = env('VISION_API_KEY');
 const GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET');
 const GOOGLE_REFRESH_TOKEN = env('GOOGLE_REFRESH_TOKEN');
@@ -131,27 +134,27 @@ app.patch('/api/admin/usuarios/:id', autenticado, somenteAdmin, async (req, res)
   res.json({ ok: true });
 });
 
-// OCR: recebe a folha já tratada (JPEG em base64) e devolve o texto.
+// OCR local com Tesseract (idioma português). Recebe a folha tratada (JPEG em base64).
 app.post('/api/scan', autenticado, async (req, res) => {
   try {
     const content = String(req.body.imagem_b64 || '');
     if (!content) return res.status(400).json({ erro: 'Envie a imagem.' });
-    const r = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${VISION_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{ image: { content }, features: [{ type: 'DOCUMENT_TEXT_DETECTION' }], imageContext: { languageHints: ['pt'] } }],
-      }),
-    });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      console.error('Cloud Vision:', r.status, data.error?.message);
-      return res.status(502).json({ erro: 'Cloud Vision: ' + (data.error?.message || 'status ' + r.status) });
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ocr-'));
+    const arq = path.join(dir, 'folha.jpg');
+    try {
+      fs.writeFileSync(arq, Buffer.from(content, 'base64'));
+      const texto = await new Promise((ok, falha) =>
+        execFile('tesseract', [arq, 'stdout', '-l', 'por', '--psm', '3'],
+          { maxBuffer: 20 * 1024 * 1024 },
+          (err, out, errOut) => (err ? falha(new Error(errOut || err.message)) : ok(out)))
+      );
+      res.json({ texto });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
-    res.json({ texto: data.responses?.[0]?.fullTextAnnotation?.text || '' });
   } catch (e) {
-    console.error('Erro no OCR:', e);
-    res.status(500).json({ erro: 'Erro no servidor: ' + e.message });
+    console.error('Erro no OCR:', e.message);
+    res.status(500).json({ erro: 'OCR: ' + e.message });
   }
 });
 

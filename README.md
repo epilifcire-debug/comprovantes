@@ -37,6 +37,8 @@ Meu Drive/
 
 ## Servidor (backend)
 
+O OCR usa o Tesseract, instalado no Dockerfile. Não precisa de chave nem de faturamento.
+
 Variáveis de ambiente (configure no Shard Cloud, nunca no repositório):
 
 | Variável | Para que serve |
@@ -44,7 +46,6 @@ Variáveis de ambiente (configure no Shard Cloud, nunca no repositório):
 | `SUPABASE_URL` | URL do projeto Supabase |
 | `SUPABASE_SERVICE_KEY` | Chave `service_role` do Supabase |
 | `SESSION_SECRET` | Texto longo e aleatório, para assinar os logins |
-| `VISION_API_KEY` | Chave da Cloud Vision |
 | `GOOGLE_CLIENT_ID` | Client ID do OAuth |
 | `GOOGLE_CLIENT_SECRET` | Client Secret do OAuth |
 | `GOOGLE_REFRESH_TOKEN` | Gerado uma vez pelo script `npm run token` |
