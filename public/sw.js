@@ -1,4 +1,4 @@
-const CACHE = 'folha-drive-v4';
+const CACHE = 'folha-drive-v5';
 const SHELL = ['./', 'index.html', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
