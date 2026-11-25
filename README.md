@@ -27,3 +27,10 @@ Meu Drive/
 - Ao criar as pastas, a folha escaneada (tons de cinza, com contraste) é salva como `Folha escaneada.pdf` dentro da pasta de cada pessoa que aparece na lista. A folha inteira vai para cada uma, sem recorte. Se a pasta já tiver esse arquivo, ele não é enviado de novo.
 - Antes do OCR, a foto é girada, convertida em tons de cinza e recebe contraste, para ficar parecida com um scan. Não há correção de perspectiva. Por isso, fotografe a folha reta e bem iluminada.
 - Sempre confira a lista antes de criar as pastas.
+
+## Banco de dados (Supabase)
+
+1. No projeto Supabase, abra **SQL Editor**, cole o conteúdo de `supabase/migrations/0001_usuarios.sql` e execute.
+2. Não crie o administrador por SQL com senha em texto. O primeiro admin (`admin_master`) será criado pelo script do servidor, que grava o hash da senha.
+3. Chaves: use só a **service_role** no servidor, como variável de ambiente no Shard Cloud. Nunca no navegador nem neste repositório.
+4. Quando o projeto não for mais necessário, apague-o no Supabase. Os dados de usuários vão junto.
